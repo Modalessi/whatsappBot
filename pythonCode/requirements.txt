@@ -1,7 +1,3 @@
 requests
 m3u8
 ffmpeg-python
-instaloader
-sclib
-pytube
-

@@ -1,6 +1,7 @@
 import instaloader
-
 import os
+
+
 
 
 fileName = "shortcode.txt"
@@ -23,10 +24,12 @@ def deleteOldFiels() :
 
 
 L = instaloader.Instaloader()
+L.login("mod.alessi", "Mohammed1415")  
 p = instaloader.Post.from_shortcode(L.context, shortCode)
 try :
     deleteOldFiels()
     L.download_post(p, shortCode) 
 except :
     pass
+
 shortCodeFile.close()
