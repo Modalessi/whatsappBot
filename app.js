@@ -8,7 +8,7 @@ const xf = require('xfetch-js');
 const sagiri = require('sagiri');
 // const { range } = require('lodash');
 // const { addConsoleHandler } = require('selenium-webdriver/lib/logging');
-
+const kfoMsg = "كفوك الطيب الي على طيب رباك يامحزمي اليمين الي مايعري ياعصبه الراس وقت الليالي المعاسير انشهد انك محزم ظفر وقت الشدايد يالمحزم المليان السنافي الوافي الطحطوح كايد أبو الظفرات عطيب الضرايب حامي الممالك السبع والوريث الشرعي غيهب المدات ساس القوم المحزم المليان الصنديد راعي الفزعات طلق المحيا راس القوم راعي الاوله طير شلوى سليل المجد والامجاد";
 
 
 
@@ -133,6 +133,11 @@ async function enteractWithMessage(msg) {
 
 
 
+    } else if (msg.body.toLocaleLowerCase().includes("كفو")) {
+        msg.reply(kfoMsg) ;
+    
+    
+    
     } else if (msg.body == "$s") {
         creatSticker(msg) ;
 
