@@ -316,6 +316,26 @@ async function enteractWithMessage(msg) {
     
     }
 
+    else if (msg.body == "$trim" || msg.body == "$short") {
+        const url = msg.body.split("\n")[1];
+        const options = {
+            method: 'POST',
+            url: 'https://utrim.xyz/api/trim',
+            headers: {
+                'x-api-key' : process.env.API_KEY,
+            },
+            json: {
+                "url": url
+            }
+          };
+          request(options, function (error, response, body) {
+              if (error) throw new Error(error);
+              if (body.status === "success") msg.reply(body.data.link)
+              else if (body.status === "fail") msg.reply("Unvalid link.")
+          });
+
+    }
+
     if (await msgIsVote(msg)) {
         votes.push(msg.body.toUpperCase()) ;
     }
