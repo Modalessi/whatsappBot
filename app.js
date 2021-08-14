@@ -10,6 +10,7 @@ const {Builder, By, Key, until} = require('selenium-webdriver');
 require('dotenv').config({path:'environmentVariables.env'})
 const fetch = require('node-fetch') ;
 
+
 const SESSION_FILE_PATH = './session.json';
 
 let sessionData;
@@ -256,6 +257,12 @@ async function enteractWithMessage(msg) {
     
     }
 
+    if (await msgIsVote(msg)) {
+        votes.push(msg.body.toUpperCase()) ;
+    }
+
+    // check(msg)
+    checkOria(msg)
 }
 
 
