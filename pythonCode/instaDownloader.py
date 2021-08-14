@@ -24,7 +24,6 @@ def deleteOldFiels() :
 
 
 L = instaloader.Instaloader()
-L.login("mod.alessi", "Mohammed1415")  
 p = instaloader.Post.from_shortcode(L.context, shortCode)
 try :
     deleteOldFiels()

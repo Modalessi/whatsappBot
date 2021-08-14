@@ -6,12 +6,9 @@ const readline = require('readline');
 const request = require('request');
 const xf = require('xfetch-js');
 const sagiri = require('sagiri');
-// const { range } = require('lodash');
-// const { addConsoleHandler } = require('selenium-webdriver/lib/logging');
-
-
-
-
+const {Builder, By, Key, until} = require('selenium-webdriver');
+require('dotenv').config({path:'environmentVariables.env'})
+const fetch = require('node-fetch') ;
 
 const SESSION_FILE_PATH = './session.json';
 
@@ -21,11 +18,9 @@ if(fs.existsSync(SESSION_FILE_PATH)) {
 }
 
 // remove when uploade to github
+let responses = []
 const dirtyWords = []
-const blackList = {}
-const oriaList = []
-
-let batteryInfo ;
+const kfoMsg = "كفوك الطيب الي على طيب رباك يامحزمي اليمين الي مايعري ياعصبه الراس وقت الليالي المعاسير انشهد انك محزم ظفر وقت الشدايد يالمحزم المليان السنافي الوافي الطحطوح كايد أبو الظفرات عطيب الضرايب حامي الممالك السبع والوريث الشرعي غيهب المدات ساس القوم المحزم المليان الصنديد راعي الفزعات طلق المحيا راس القوم راعي الاوله طير شلوى سليل المجد والامجاد";
 
 const helpMsg = `
 
@@ -36,33 +31,24 @@ const helpMsg = `
 send it with media (image, video or gif) 
 to convert it into sticker 
 
- 📷   $insta :
+📷   $insta :
 mention this command on instagram post link
 or send the link in a following line to download posts (please wait as it takes some time)
 
- 🐦   $twitter :
+🐦   $twitter :
 mention this command on twitter tweet link
 or send the link in a following line to download tweet's video (please wait as it takes some time)
 
-🎵  $sc :
-mention this command on soundcloud link
-or send the link in a following line to download it (please wait as it takes some time)
+📺   $yt : 
+mention this command on youtube video link
+or send the link in a following line to download video (please wait as it takes some time)
 
 🤔    $choose:
 send it with  items provided in every single line
 to choose randomly 
 
-❤️    $love :
-Send it or mention a message with it and the bot will reply with a compliment audio 
-
-😂 $joke : 
-send it and the bot will reply with a random joke
-
-🙋🏻 $ask :
-send it with a question provided in a new line and the bot will answer you
-
 🇯🇵 $anime : 
-send it with anime image or mention anime image with and the bot will repy with information
+send it with anime image or mention anime image with it and the bot will reply with information
 about that image
 
 🏡     $help :
@@ -72,7 +58,7 @@ to get this list
 
 const client = new Client({
     puppeteer: {
-        executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        executablePath: process.env.ChromePath,
     },
     session: sessionData
 })
@@ -96,23 +82,32 @@ client.on('authenticated', (session) => {
 
 
 client.on('ready', () => {
-    // remove when uploade to github
-    getBlackList()
     getDirtyWords() 
-    getOriaList()
+    readResponse()  
     console.log('Bot is ready!');
 });
 
 
 async function enteractWithMessage(msg) {
 
-    if (msg.body == '$hi'  && messageFromBoss(msg)) {
+    if (msg.hasMedia) {
+        const media = await msg.downloadMedia() 
+        console.log(media.mimetype)
+    }
+    
+    if (msg.body == '$hi') {
         msg.reply("yes sir !") ;
         
 
 
 
 
+    } else if (msg.body.startsWith("$trim") || msg.body.startsWith("$short")) {
+        urlTrim(msg)
+      
+        
+        
+        
     } else if (msg.body.startsWith("$statics") && messageFromBoss(msg)) {
         authors = {}
         const chat = await msg.getChat()
@@ -133,6 +128,12 @@ async function enteractWithMessage(msg) {
 
 
 
+    } else if (msg.body.split().includes("كفو")) {
+        msg.reply(kfoMsg) ;
+    
+        
+    
+    
     } else if (msg.body == "$s") {
         creatSticker(msg) ;
 
@@ -161,12 +162,6 @@ async function enteractWithMessage(msg) {
 
     } else if ((msg.body.startsWith("$math")) && messageFromBoss(msg)) {
         msg.reply(doMath(msg.body), msg.from) ;
-
-
-
-
-    } else if (msg.body == "$love") {
-        sendMediaFileToMSG(msg, "love1.mp3")
 
 
 
@@ -201,20 +196,6 @@ async function enteractWithMessage(msg) {
 
 
 
-    } else if (msg.body == "$sc") {
-        writeShortcode(msg)
-
-        PythonShell.run('./pythonCode/soundDownloader.py', null, function (err) {
-            if (err) {
-                msg.reply("عذرا حدث خطا ما")
-            } else {
-                sendMediaFileToMSG(msg, "soundcloudFile.mp3") ;
-            }
-          });
-
-
-
-
     } else if (msg.body == "$yt") {
         writeShortcode(msg)
 
@@ -224,26 +205,6 @@ async function enteractWithMessage(msg) {
                 msg.reply("عذرا حدث خطا ما")
             } else {
                 sendMediaFileToMSG(msg, "youtubeVideo.mp4") ;
-            }
-          });
-
-
-
-
-    } else if (msg.body.startsWith("$ytmp3")) {
-        writeShortcode(msg)
-
-        PythonShell.run('./pythonCode/youtubeDownloader.py', null, function (err) {
-            if (err) {
-                msg.reply("عذرا حدث خطا ما")
-            } else {
-                PythonShell.run("./pythonCode/youtubeToMp3.py", null, function (err) {
-                    if (err) {
-                        msg.reply("عذرا حدث خطا ما")
-                    } else {
-                        sendMediaFileToMSG(msg, "youtubeVideo.mp3") ;
-                    }
-                }) ;
             }
           });
 
@@ -271,37 +232,6 @@ async function enteractWithMessage(msg) {
 
 
 
-    } else if (msg.body.startsWith("$addTo BlackList") && messageFromBoss(msg)) {
-        addToBlackList(msg, msg.body.split("\n")[1])
-    
-    
-    
-    
-    
-    
-    } else if (msg.body == "$oria" && messageFromBoss(msg)) {
-        addToOriaList(msg)
-
-
-
-    }else if (msg.body == "$meme")  {
-        randomMeme(msg)
-
-
-
-
-    } else if (msg.body == "$joke") {
-        randomJoke(msg)
-    
-    
-    
-    } else if (msg.body.startsWith("$ask")) {
-        ai(msg)
-    
-    
-    
-    
-    
     } else  if (msg.body == "$anime") {
         saucenaoAPI(msg)
     
@@ -309,14 +239,22 @@ async function enteractWithMessage(msg) {
     
     
     
+    } else if (msg.body.startsWith("$zajel")) {
+        sendZajel(msg)
+    
+    
+    
+    } else if (msg.body.startsWith("$re") && messageFromBoss(msg)) {
+        createTriggerWordResponse(msg)
     }
-
+    
+    
     if (await msgIsVote(msg)) {
         votes.push(msg.body.toUpperCase()) ;
+    
+    
+    
     }
-
-    // check(msg)
-    checkOria(msg)
 
 }
 
@@ -324,7 +262,7 @@ async function enteractWithMessage(msg) {
 client.on('message', async msg => {
     printMSG(msg) ;
     enteractWithMessage(msg) ;
-
+    isResponse(msg);
 });
 
 
@@ -347,53 +285,39 @@ client.on('group_join', async notification => {
 
 // -MARK: Commands Functions 
 
-async function checkOria(msg) {
-    const contact = await msg.getContact()
-    console.log(oriaList)
-    if (oriaList.includes(contact.number)) {
-        msg.reply("oria 😂 👆🏻")
-        
+
+async function sendZajel(msg) {
+    if (!msg.hasQuotedMsg) {
+        msg.reply("there is no quoted message to send")
+        return
     }
-}
-
-
-async function addToOriaList(msg) {
-
-    const qm = await msg.getQuotedMessage()
-    const contact = await qm.getContact()
-    fs.appendFile("oriaList.txt", `${contact.number}\n`, function(err) {
-        if (err) {
-            msg.reply(`error : \n ${err}`)
-        } else {
-            msg.reply(`added to oria list successfully`)
-            getOriaList()
-        }
-    }) ;
-
-}
-
-
-function getOriaList() {
-    const readInterface = readline.createInterface({
-        input: fs.createReadStream('oriaList.txt'),
-        console: false 
-    });
-
-    readInterface.on("line", function(line) {
-        oriaList.push(line)
-    }) ;
+    
+    const quotedMsg = await msg.getQuotedMessage() ;
+    let number = msg.body.split('\n')[1];
+    let message = quotedMsg.body
+    // check if string contains specific character    
+    if (number.includes("@")) {
+        // remove character from string
+        number = number.replace(/@/g, '')
+    }
+    number = `${number}@c.us`;
+    client.sendMessage(number, message);
 }
 
 
 async function saucenaoAPI(msg) {
-
-    // const sagiri = require('sagiri'); 
+    let media = {}
+    if (msg.hasQuotedMsg) {
+        const quotedMsg = await msg.getQuotedMessage() ;
+        media = await quotedMsg.downloadMedia();
+    } else {
+        media = await msg.downloadMedia()
+    }
+    
     const apiKey = "b94b2c183e71903683209c37356cb60b7fa06739"
 
     const saucenao = sagiri(apiKey);
 
-
-    const media = await msg.downloadMedia()
 
     fs.writeFile("anime.jpeg", media.data, "base64", async function(err) {
         if (err) {console.log(err)}
@@ -452,119 +376,6 @@ async function saucenaoAPI(msg) {
 
     })
 
-}
-
-function ai(msg) {
-
-    const chat = msg.body.split("\n")
-    console.log(chat)
-    const mssg = chat[1]
-
-    const options = {
-        method: 'GET',
-        url: 'https://api.pgamerx.com/v3/ai/response',
-        qs: {message: mssg, type: "stable"},
-        headers: {
-            'x-api-key' : "9HXmSweBcXt2",
-            'x-rapidapi-key': '768fea5b8dmsh0a5e52ef9cad9b9p136ac9jsna51d4e5a32b8',
-            'x-rapidapi-host': 'random-stuff-api.p.rapidapi.com',
-            useQueryString: true
-        }
-      };
-      
-      request(options, function (error, response, body) {
-          if (error) throw new Error(error);
-          const json = JSON.parse(body)
-          console.log(json)
-          const res = json[0]
-          msg.reply(`${res["message"]}`)
-          console.log(body);
-      });
-
-}
-
-function randomJoke(msg) {
-
-    const options = {
-        method: 'GET',
-        url: 'https://random-stuff-api.p.rapidapi.com/joke/any',
-        qs: {api_key: "9HXmSweBcXt2"},
-        headers: {
-          'x-rapidapi-key': '768fea5b8dmsh0a5e52ef9cad9b9p136ac9jsna51d4e5a32b8',
-          'x-rapidapi-host': 'random-stuff-api.p.rapidapi.com',
-          useQueryString: true
-        }
-      };
-      
-      request(options, function (error, response, body) {
-          if (error) throw new Error(error);
-          const json = JSON.parse(body)
-          const flags =  json["flags"]
-          if (flags["nsfw"] == true || flags["religious"] == true || flags["sexist"] == true) {
-              randomJoke(msg)
-              return
-          }
-          console.log(json)
-          if (json["type"] == "single") {
-              msg.reply(json["joke"])
-          } else {
-            msg.reply(json["setup"] + "\n" + json["delivery"])
-          }
-      });
-
-}
-
-function randomMeme(msg) {
-
-    const options = {
-        method: 'GET',
-        url: 'https://random-stuff-api.p.rapidapi.com/image/dankmemes',
-        qs: {api_key: "9HXmSweBcXt2"},
-        headers: {
-          'x-rapidapi-key': '768fea5b8dmsh0a5e52ef9cad9b9p136ac9jsna51d4e5a32b8',
-          'x-rapidapi-host': 'random-stuff-api.p.rapidapi.com',
-          useQueryString: true
-        }
-      };
-      
-      request(options, function (error, response, body) {
-            if (error) throw new Error(error);
-      
-            const json = JSON.parse(body)
-            console.log(json)
-
-            let extenstion = json[0].split(".")
-            extenstion = extenstion[extenstion.length - 1]
-
-        //   const file = fs.createWriteStream()
-            const stream = request(json[0]).pipe(fs.createWriteStream(`meme.${extenstion}`))
-            stream.on('finish', function () {
-                const media = MessageMedia.fromFilePath(`meme.${extenstion}`)
-                msg.reply(media)
-             });
-            
-      });
-
-}
-
-
-async function check(msg) {
-    const group = await msg.getChat()
-    const contact = await msg.getContact()
-    console.log(blackList)
-    const keys = Object.keys(blackList)
-    for (let i = 0; i < keys.length; i++) {
-        console.log(blackList[keys[i]])
-        if (keys[i] == contact.number) {
-            blackList[keys[i]] -= 1 ;
-            if (blackList[keys[i]] == 0) {
-                await kick(group, contact)
-            }
-            if (blackList[keys[i]] == 1) {
-                msg.reply("one more message and you will be kicked out")
-            }
-        }
-    }
 }
 
 async function kick(group ,contact) {
@@ -693,7 +504,7 @@ function getDirtyWords() {
 
 function messageFromBoss(msg) {
 
-    if (msg.id["_serialized"].includes("509587069") || msg.id["_serialized"].includes("888-3314")) {
+    if (msg.id["_serialized"].includes("509587069")) {
         return true ;
     } else {
         return false ;
@@ -749,6 +560,30 @@ function doMath(s) {
     const eq = splitted[1] ;
     const res = eval(eq) ;
     return res.toString() ;
+}
+
+
+async function urlTrim(msg) {  
+    console.log("inside function")
+    const url = msg.body.split("\n")[1];
+    
+    const options = {
+        method: 'POST',
+        url: 'https://utrim.xyz/api/trim',
+        headers: {
+            'x-api-key' : String(process.env.APIKEY),
+        },
+        json: {
+            "url": url
+          }
+      };
+      request(options, function (error, response, body) {
+          if (error) throw new Error(error);
+          console.log(body)
+          if (body.status === "success") msg.reply(body.data.link)
+          else if (body.status === "fail") msg.reply("Unvalid link.")
+      });
+    
 }
 
 
@@ -877,26 +712,97 @@ function startSpam(msg, num, text) {
     }
 }
 
-
-// async function dealWithUnreadedMesseages() {
-
-//     const chats = await client.getChats()
-
-//     let count = 1 
-
-//     chats.forEach(function(chat) {
+async function createTriggerWordResponse(msg) {
+    if (!msg.hasQuotedMsg) {
+        msg.reply("you need to mention a message to be a response")
+        return
+    }
+    
+    const quotedMsg = await msg.getQuotedMessage() ;
+    
+    if (quotedMsg.hasMedia) {
+        const media = await quotedMsg.downloadMedia() ;
+        let extenstion = ""
         
-//         const unreadCount = chat.unreadCount 
-//         const msgs = await group.fetchMessages({limit: unreadCount})
+        if (media.mimetype == "image/jpeg") {
+            extenstion = "jpg"
+        } else if (media.mimetype == "image/png") {
+            extenstion = "png"
+        } else if (media.mimetype == "video/mp4") {
+            extenstion = "mp4"
+        } else if (media.mimetype == "audio/ogg; codecs=opus") {
+            extenstion = "mp3"
+        } else  {
+            msg.reply("sorry this media is not supported yet")
+            return
+        }
+        
+        const triggerWord = msg.body.split("\n")[1] ;
+        
+        fs.writeFile(`./responses/${triggerWord}.${extenstion}`, media.data, "base64", async function(err) {
+            const response = new Object() ;
+            response.triggerWord = triggerWord ;
+            response.isMedia = true ;
+            response.mediaType = extenstion
+            response.response = ""
+            responses.push(response) ;
+            msg.reply("تمت اضافة الرد")
+            saveResponses()
+        })
+    } else {
+        const triggerWord = msg.body.split("\n")[1] ;
+        const response = new Object() ;
+        response.triggerWord = triggerWord ;
+        response.isMedia = false ;
+        response.mediaType = ""
+        response.response = quotedMsg.body
+        responses.push(response) ;
+        msg.reply("تمت اضافة الرد")
+        saveResponses()
+    }
+    
+}
 
-//         msgs.forEach(function(msg) {
-//             enteractWithMessage(msg)
-//         })
 
-//     })
+async function isResponse(msg) {
+    console.log(responses)
+    responses.forEach(async function (response) {
+     console.log("checking")
+      if (response.triggerWord == msg.body) {
+          if (response.isMedia) {
+            const media = MessageMedia.fromFilePath(`./responses/${response.triggerWord}.${response.mediaType}`)
+            if (msg.hasQuotedMsg) {
+                const qm = await msg.getQuotedMessage()
+                qm.reply(media, msg.from)
+            } else {
+                msg.reply(media, msg.from)
+            }
+          } else {
+            if (msg.hasQuotedMsg) {
+                const qm = await msg.getQuotedMessage()
+                qm.reply(response.response)
+            } else {
+                msg.reply(response.response)
+            }
+          }
+      }
+    })   
+}
 
-// }
+async function saveResponses() {
+    fs.writeFile("./responses/data.json", JSON.stringify(responses), function(err) {
+        console.log("reponses Saved")
+    })
+}
 
+async function readResponse() {
+    fs.readFile('./responses/data.json', (err, data) => {
+        if (err) throw err;
+        responses = JSON.parse(data);
+        console.log(responses);
+    });
+}
+    
 
 client.initialize();
 
