@@ -247,6 +247,21 @@ async function enteractWithMessage(msg) {
     
     } else if (msg.body.startsWith("$re") && messageFromBoss(msg)) {
         createTriggerWordResponse(msg)
+    
+    
+    
+    
+    }  else if (msg.body == "$roulette") {
+        const chat = await msg.getChat()
+        const contact = await msg.getContact()
+        // get random number between 1 and 6
+        const randomNumber = Math.floor(Math.random() * 6) + 1
+        if (randomNumber == 1) {
+            msg.reply("you dead")
+            kick(chat, contact)
+        } else {
+            msg.reply("you survived")
+        }
     }
     
     
